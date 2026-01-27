@@ -1,39 +1,29 @@
 # Build stage
-FROM node:20-alpine AS base
+FROM node:20-alpine AS builder
 
-FROM base AS deps
 WORKDIR /app
-COPY package.json package-lock.json* ./
+COPY package*.json ./
 RUN npm ci
-
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 RUN npm run build
 
-# Production stage
-FROM nginx:alpine AS runner
+# Production stage - use unprivileged nginx
+FROM nginxinc/nginx-unprivileged:alpine
 
-# Create /data directory for HF Spaces persistent storage
-RUN mkdir -p /data && chmod 777 /data
-
-# Use /tmp for nginx writable paths
-RUN mkdir -p /tmp/nginx && chmod 777 /tmp/nginx
-
-# Copy nginx configuration
+# Copy nginx config
 COPY nginx.conf /etc/nginx/nginx.conf
 
-# Copy built files from build stage
+# Copy built files
 COPY --from=builder /app/dist /usr/share/nginx/html
 
-# Set permissions
-RUN chmod -R 755 /usr/share/nginx/html
+# Ensure correct permissions
+USER root
+RUN chmod -R 755 /usr/share/nginx/html && \
+    mkdir -p /tmp/client_body /tmp/proxy /tmp/fastcgi /tmp/uwsgi /tmp/scgi && \
+    chmod -R 777 /tmp
+USER nginx
 
-# HF Spaces configuration
-ENV PORT=7860
-ENV HOSTNAME="0.0.0.0"
+# HF Spaces port
 EXPOSE 7860
 
-# Start nginx
 CMD ["nginx", "-g", "daemon off;"]
