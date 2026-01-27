@@ -4,9 +4,10 @@ emoji: 📝
 colorFrom: indigo
 colorTo: purple
 sdk: docker
+app_file: Dockerfile
+app_port: 7860
 pinned: false
 license: mit
-app_port: 7860
 ---
 
 # کٲشِر Critics - Kashmiri Diacritics Converter
